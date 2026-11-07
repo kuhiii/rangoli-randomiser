@@ -95,22 +95,16 @@ kbd { font: 600 11px Inter, system-ui, sans-serif; background: var(--card); bord
 .stack > .ly {
   position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
   transform-origin: 50% 50%; will-change: transform, opacity;
-  transition: opacity .22s ease-out, transform .34s cubic-bezier(.22, .8, .24, 1);
+  transition: opacity .22s ease-out, filter .22s ease-out, transform .34s cubic-bezier(.22, .8, .24, 1);
 }
 /* the held element is moved every frame by the soft follow, so no transform transition on it */
 .stack > .ly.held { transition: opacity .22s ease-out; }
 .stack.snap { z-index: 1; }
-.stack.has-focus > .ly:not(.focus) { opacity: .28; }
-/* while layers are dimmed, a soft warm disc fades in under the rangoli so the floor tiles don't
-   show through the faded layers (opacity only, so hover stays smooth) */
-.stack::before {
-  content: ''; position: absolute; inset: calc(50% - var(--rr, 50%)); border-radius: 50%; pointer-events: none; opacity: 0; will-change: opacity;
-  background: radial-gradient(circle closest-side, #faf5ec 0 94%, rgba(250, 245, 236, 0) 100%);
-  transition: opacity .22s ease-out;
-}
-.stack.has-focus::before { opacity: .94; }
-.stack.drag-on::before { opacity: .8; }
-.stack.drag-on > .ly:not(.dragged) { opacity: .5; }
+/* hover: the other layers fade back by losing colour, not by going see-through (that let the floor
+   show through), so the hovered layer stands out without any highlight shape */
+.stack.has-focus > .ly:not(.focus) { opacity: .7; filter: saturate(.12) brightness(1.14) contrast(.82); }
+
+.stack.drag-on > .ly:not(.dragged) { opacity: .7; filter: saturate(.12) brightness(1.14) contrast(.82); }
 .stack > .ly.dragged { z-index: 2; filter: drop-shadow(0 8px 10px rgba(40, 25, 10, .22)); }
 /* hit areas only: transparent and on top */
 #canvas .layer { cursor: grab; }
@@ -542,3 +536,56 @@ body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; 
 .cf-check { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 16px 0 0; font-size: 13px; color: var(--muted); cursor: pointer; }
 .cf-actions { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
 .cf-actions .btn { border-radius: 10px; }
+
+/* ------------------------------------------------ phone layout (final overrides) */
+@media (max-width: 760px) {
+  /* the rangoli gets the whole stage: centred between the header and the Generate pill */
+  :root {
+    --gen-h: 52px;
+    --stage-h: calc(100dvh - var(--header) - var(--drawer) - var(--gen-h) - 40px);
+    --size: min(calc(100vw - 24px), calc(var(--stage-h) - var(--toran) - 8px));
+    --stage-mid: calc(var(--header) + var(--toran) / 2 + var(--stage-h) / 2);
+  }
+  html, body { overflow: hidden; overflow: clip; } /* the scene pans; the page itself never scrolls sideways */
+  .stage { height: var(--stage-h); justify-content: center; padding: var(--toran) 12px 0; gap: 0; }
+
+  /* The scene is wider than the phone: floor, toran, rangoli, stickers, the bin on the left and the
+     palette on the right all pan together when you drag across the floor. --pan is set by JS. */
+  .stage { position: relative; }
+  .stage, .toran, .trash { translate: var(--pan, 0px) 0; }
+  .toran { left: -72px; } /* drawn wider than the screen (see renderToran) so panning never shows its end */
+  body.on-floor { background-position: 0 0, 0 0, var(--pan, 0px) 0; }
+  html.pan-ease .stage, html.pan-ease .toran, html.pan-ease .trash { transition: translate .38s cubic-bezier(.22, .8, .24, 1); }
+  html.pan-ease body.on-floor { transition: background-position .38s cubic-bezier(.22, .8, .24, 1); }
+  .palette {
+    position: absolute; z-index: 16; left: calc(100% - 18px); top: 50%; right: auto; width: 148px; height: auto;
+    flex-direction: column; gap: 4px; transform: translateY(-50%); transition: none;
+  }
+  .palette .swatch:first-child { border-top-left-radius: 8px; }
+  .palette > :last-child { border-bottom-left-radius: 8px; }
+  .swatch { flex: none; height: 32px; padding: 0 4px 0 10px; flex-direction: row; align-items: center; justify-content: space-between; border-radius: 0; }
+  .swatch .hex { font-size: 10.5px; letter-spacing: .02em; }
+  .palette .sw-add { width: auto; height: 32px; }
+
+  /* the bin peeks in from the left, like on desktop */
+  .trash { top: var(--stage-mid); width: 70px; height: 92px; transform: translate(-30px, -50%) rotate(14deg); }
+  body.dragging .trash { transform: translate(14px, -50%) rotate(0deg); }
+
+  /* Generate: a pill pinned 24px above the drawer (the open drawer slides over it) */
+  .gen-mobile {
+    position: fixed; z-index: 19; left: 50%; transform: translateX(-50%);
+    bottom: calc(var(--drawer) + 24px + env(safe-area-inset-bottom));
+    width: auto; height: var(--gen-h); padding: 0 30px; border-radius: 999px; font-size: 15px;
+  }
+  .gen-mobile:active { transform: translateX(-50%) scale(.97); }
+
+  /* the sheet needs a real frosted fill on a phone, or the page shows straight through */
+  .drawer:not(.moving) {
+    background: rgba(255, 251, 244, .86) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(1.3); backdrop-filter: blur(22px) saturate(1.3);
+  }
+  .drawer.moving { background: rgba(255, 251, 244, .94) !important; }
+
+  /* a long-pressed layer lifts a little before it can be dragged */
+  .stack > .ly.armed { transform: scale(1.015); transition: transform .18s ease-out; }
+}

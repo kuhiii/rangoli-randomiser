@@ -538,13 +538,15 @@
     return out + place(motif, P, hw, h);
   }
 
+  // hover area of a ring: its band, widened to a comfortable minimum so thin bands are easy to hit
+  const MIN_HIT = 34;
   function ringHit(form, L, b) {
     const [a0, a1, full] = span(form, L);
-    const st = 96, o = [], i = [], h = b.r1 - b.r0;
+    const st = 96, o = [], i = [], h = b.r1 - b.r0, extra = Math.max(0, (MIN_HIT - h) / 2);
     for (let k = 0; k <= st; k++) {
       const tb = a0 + ((a1 - a0) * k) / st;
-      o.push(ptAt(form, L, tb, (s) => b.r0 + h * Math.max(1, s) + b.pad));
-      i.push(ptAt(form, L, tb, () => Math.max(0, b.r0 - b.pad)));
+      o.push(ptAt(form, L, tb, (s) => b.r0 + h * Math.max(1, s) + b.pad + extra));
+      i.push(ptAt(form, L, tb, () => Math.max(0, b.r0 - b.pad - extra)));
     }
     i.reverse();
     const d = full ? poly(o, true) + poly(i, true) : poly(o.concat(i), true);
@@ -803,11 +805,14 @@
       const L = state.rings[i], b = lay.bands[L.id];
       let badge_ = '';
       if (ui && L.locked) { const p = ptAt(state.form, L, Math.PI / 4, () => b.r1); badge_ = badge(p[0], p[1]); }
-      list.push({ id: L.id, kind: 'ring', art: ringArt(state, L, b), hit: ui ? ringHit(state.form, L, b) : '', badge: badge_ });
+      // hz: hover stacking — thinner rings sit above thicker ones so their widened hover area wins
+      list.push({ id: L.id, kind: 'ring', art: ringArt(state, L, b), hit: ui ? ringHit(state.form, L, b) : '', badge: badge_, hz: -(b.r1 - b.r0) });
     }
     if (state.center) {
       const C = state.center, Rc = lay.bands[C.id].r1;
-      list.push({ id: C.id, kind: 'center', art: centerArt(state, C, Rc), hit: ui ? `<circle class="hit" r="${n(Rc)}" fill="transparent"/>` : '',
+      const cpts = [];
+      if (ui) for (let k = 0; k < 96; k++) { const t = (k / 96) * TAU, r = Rc * rho(state.form, t); cpts.push([Math.sin(t) * r, -Math.cos(t) * r]); }
+      list.push({ id: C.id, kind: 'center', art: centerArt(state, C, Rc), hit: ui ? `<path class="hit" d="${poly(cpts, true)}" fill="transparent"/>` : '',
         badge: ui && C.locked ? badge(Rc * 0.72, -Rc * 0.72) : '' });
     }
     for (const A of state.accents) {

@@ -11,7 +11,7 @@
   <meta name="theme-color" content="#f7e7a3" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=64" />
+  <link rel="stylesheet" href="css/styles.css?v=69" />
   <!-- Vercel Web Analytics (static-site version of @vercel/analytics; the script is served by Vercel) -->
   <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
   <script defer src="/_vercel/insights/script.js"></script>
@@ -50,8 +50,9 @@
       <div class="toolbar stkbar" id="stkbar" hidden></div>
     </div>
     <aside class="palette" id="palette" aria-label="Colour palette"></aside>
-    <button class="btn primary gen-mobile" id="btnGenerateMobile" data-icon="spark"><span>Generate</span></button>
   </main>
+  <!-- phone only: outside the stage so it stays put while the scene pans -->
+  <button class="btn primary gen-mobile" id="btnGenerateMobile" data-icon="spark"><span>Generate</span></button>
 
   <div class="trash" id="trash" title="Drag an element here to delete it" aria-hidden="true"></div>
   <!-- Decorate: a drawer on the right edge. The tab rides on its left edge; it slides in over the palette. -->
@@ -100,13 +101,13 @@
 
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/Draggable.min.js"></script>
-  <script src="js/util.js?v=64"></script>
-  <script src="js/palette.js?v=64"></script>
-  <script src="js/motifs.js?v=64"></script>
-  <script src="js/render.js?v=64"></script>
-  <script src="js/scene.js?v=64"></script>
-  <script src="js/generator.js?v=64"></script>
-  <script src="js/store.js?v=64"></script>
-  <script src="js/app.js?v=64"></script>
+  <script src="js/util.js?v=69"></script>
+  <script src="js/palette.js?v=69"></script>
+  <script src="js/motifs.js?v=69"></script>
+  <script src="js/render.js?v=69"></script>
+  <script src="js/scene.js?v=69"></script>
+  <script src="js/generator.js?v=69"></script>
+  <script src="js/store.js?v=69"></script>
+  <script src="js/app.js?v=69"></script>
 </body>
 </html>

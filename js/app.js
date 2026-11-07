@@ -2,6 +2,7 @@
 (function () {
   const { U, render: RD, gen: G, palette: PAL, store: ST } = R;
   const $ = (s) => document.querySelector(s);
+  const mqMobile = matchMedia('(max-width: 760px)');
 
   const ICONS = {
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
@@ -250,15 +251,10 @@
     const P = RD.parts(st, { ui: true });
     stackEl.innerHTML = `<svg class="defs" aria-hidden="true">${P.defs}</svg>` +
       P.list.map((l) => `<svg class="ly" data-id="${l.id}" data-kind="${l.kind}" viewBox="-440 -440 880 880" aria-hidden="true"><g filter="url(#pw)">${l.art}</g></svg>`).join('');
-    svgEl.innerHTML = P.list.map((l) => `<g class="layer" data-id="${l.id}" data-kind="${l.kind}">${l.hit}</g>`).join('') +
+    // hover areas: rings ordered thick → thin (thin on top), everything else keeps paint order above them
+    const rings = P.list.filter((l) => l.kind === 'ring').sort((a, b) => a.hz - b.hz), rest = P.list.filter((l) => l.kind !== 'ring');
+    svgEl.innerHTML = [...rings, ...rest].map((l) => `<g class="layer" data-id="${l.id}" data-kind="${l.kind}">${l.hit}</g>`).join('') +
       `<g class="badges">${P.list.map((l) => l.badge).join('')}</g>`;
-    // size the dimming backdrop to the rangoli's real outer edge (viewBox half-size is 440)
-    let r = 0;
-    stackEl.querySelectorAll('.ly > g').forEach((g) => {
-      const b = g.getBBox();
-      if (b.width) r = Math.max(r, -b.x, -b.y, b.x + b.width, b.y + b.height);
-    });
-    stackEl.style.setProperty('--rr', `${Math.min(56, (r / 440) * 50 + 2).toFixed(2)}%`);
   }
   const lyr = (id) => stackEl.querySelector(`.ly[data-id="${id}"]`);
   let paintedKey = '';
@@ -351,7 +347,7 @@
   };
   // Where the bin sits while something is dragged. Read from its layout box, not its animated
   // rect, so the target never moves under the pointer while the bin slides in or grows.
-  const binAt = () => ({ x: trashEl.offsetLeft + trashEl.offsetWidth / 2 + 22, y: trashEl.offsetTop });
+  const binAt = () => ({ x: trashEl.offsetLeft + trashEl.offsetWidth / 2 + 22 + (mqMobile.matches ? panX : 0), y: trashEl.offsetTop });
   // Over the bin means over the bin itself: its resting, peeking shape activates it. Once it has
   // slid out (bigger), its new shape keeps it active, so it doesn't flicker as it moves.
   const overTrash = (e, wasHot) => {
@@ -360,7 +356,7 @@
       const right = trashEl.offsetLeft - 30 + w; // resting position: translate(-30px)
       return e.clientX <= right + 4 && e.clientY >= top - 4 && e.clientY <= top + h + 4;
     }
-    const right = trashEl.offsetLeft + 22 + w * 1.12, grow = h * 0.06;
+    const right = trashEl.offsetLeft + 22 + w * 1.12 + (mqMobile.matches ? panX : 0), grow = h * 0.06;
     return e.clientX <= right + 8 && e.clientY >= top - grow - 8 && e.clientY <= top + h + grow + 8;
   };
   // While over the bin a small copy of the held element hovers above its open mouth and the
@@ -432,7 +428,7 @@
   const nearToolbar = (x, y) => {
     if (tbEl.hidden) return false;
     const r = tbEl.getBoundingClientRect();
-    if (x > r.left - 24 && x < r.right + 24 && y > r.top - 20 && y < r.bottom + 20) return true;
+    if (x > r.left - 8 && x < r.right + 8 && y > r.top - 8 && y < r.bottom + 8) return true;
     if (!anchor) return false;
     const m = 10, c = [[r.left - m, r.top - m], [r.right + m, r.top - m], [r.right + m, r.bottom + m], [r.left - m, r.bottom + m]];
     for (let i = 0; i < 4; i++) if (inTri([x, y], anchor, c[i], c[(i + 1) % 4])) return true;
@@ -462,12 +458,72 @@
   });
   svgEl.addEventListener('pointerleave', (e) => { if (!drag && e.pointerType === 'mouse') leaveLayers(e.clientX, e.clientY); });
 
+
+  /* ------------------------------------------------------------ phone pan */
+  // On a phone the scene is wider than the screen: drag across the floor to pan it. The palette
+  // waits just past the right edge, the bin peeks in from the left.
+  let panX = 0, panning = null, swallowUntil = 0;
+  const panLimits = () => {
+    const pw = palEl.offsetWidth || 148;
+    return { min: -(pw + 12 - 18), max: 64 };
+  };
+  function setPan(x, ease) {
+    document.documentElement.classList.toggle('pan-ease', !!ease);
+    panX = x;
+    document.documentElement.style.setProperty('--pan', `${x.toFixed(1)}px`);
+  }
+  function beginPan(e, sx) {
+    panning = { id: e.pointerId, sx: sx === undefined ? e.clientX : sx, x0: panX, moved: false };
+  }
+  const NO_PAN = '.topbar, .drawer, .gen-mobile, .stk, .add-pop, .toolbar, .ghost, input, select, textarea, #canvas .layer';
+  document.addEventListener('pointerdown', (e) => {
+    if (!mqMobile.matches || e.pointerType === 'mouse' || e.target.closest(NO_PAN)) return;
+    beginPan(e);
+  }, true);
+  window.addEventListener('pointermove', (e) => {
+    if (!panning || e.pointerId !== panning.id) return;
+    const dx = e.clientX - panning.sx;
+    if (!panning.moved) { if (Math.abs(dx) < 8) return; panning.moved = true; }
+    const { min, max } = panLimits();
+    let x = panning.x0 + dx;
+    // rubber band past the ends
+    if (x < min) x = min - (min - x) * 0.3; else if (x > max) x = max + (x - max) * 0.3;
+    setPan(x, false);
+  });
+  const endPan = (e) => {
+    if (!panning || e.pointerId !== panning.id) return;
+    const p = panning;
+    panning = null;
+    if (!p.moved) return;
+    swallowUntil = Date.now() + 350; // the click that ends a pan is not a tap
+    const { min, max } = panLimits();
+    setPan(U.clamp(panX, min, max), true);
+  };
+  window.addEventListener('pointerup', endPan);
+  window.addEventListener('pointercancel', endPan);
+  document.addEventListener('click', (e) => {
+    if (Date.now() < swallowUntil) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  mqMobile.addEventListener('change', () => { setPan(0, false); renderToran(true); });
+
   svgEl.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
     const g = e.target.closest('.layer');
     if (!g) { if (e.pointerType !== 'mouse') hideToolbar(); return; }
-    drag = { id: g.dataset.id, kind: g.dataset.kind, sx: e.clientX, sy: e.clientY, started: false, p0: toSvg(e) };
+    drag = { id: g.dataset.id, kind: g.dataset.kind, sx: e.clientX, sy: e.clientY, started: false, p0: toSvg(e), touch: e.pointerType !== 'mouse', armed: e.pointerType === 'mouse' };
     try { svgEl.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    // on touch a layer is only picked up after a long press, so a tap shows its toolbar and a swipe does nothing
+    if (drag.touch) {
+      const d = drag;
+      d.pressT = setTimeout(() => {
+        if (drag !== d) return;
+        d.armed = true;
+        hideToolbar();
+        const l = lyr(d.id);
+        if (l) l.classList.add('armed');
+        if (navigator.vibrate) navigator.vibrate(12);
+      }, 380);
+    }
   });
 
   // Calm dragging: nothing is redrawn while you drag. The held element eases after the pointer
@@ -499,7 +555,17 @@
   }
   function onDragMove(e) {
     if (!drag.started) {
-      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 6) return;
+      const moved = Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy);
+      if (!drag.armed) {
+        // moved before the long press completed: it was a swipe, not a pick-up
+        if (moved > 10) {
+          clearTimeout(drag.pressT);
+          if (mqMobile.matches) { beginPan(e, drag.sx); panning.moved = true; }
+          drag = null;
+        }
+        return;
+      }
+      if (moved < 6) return;
       startDrag();
     }
     drag.overTrash = overTrash(e, drag.hot);
@@ -518,6 +584,8 @@
     if (!drag) return;
     const d = drag;
     drag = null;
+    clearTimeout(d.pressT);
+    stackEl.querySelectorAll('.ly.armed').forEach((l) => l.classList.remove('armed'));
     cancelAnimationFrame(d.raf);
     svgEl.classList.remove('drag-on');
     stackEl.classList.remove('drag-on');
@@ -526,7 +594,7 @@
     trashEl.classList.remove('hot');
     if (!(d.overTrash && !cancelled)) dropGhost(false);
     if (!d.started) {
-      if (e.pointerType !== 'mouse' && !cancelled) {
+      if (e.pointerType !== 'mouse' && !cancelled && !d.armed) {
         if (focusId === d.id) hideToolbar(); else showToolbar(d.id, e.clientX, e.clientY);
       }
       return;
@@ -720,7 +788,6 @@
   // layout per frame); GSAP Draggable handles the drag. While it moves, its frosted blur is
   // switched off (re-blurring a big moving area every frame is what made it stutter) and the
   // rangoli ignores hover. On mobile the same sheet holds two tabs: Decorate (default) and Gallery.
-  const mqMobile = matchMedia('(max-width: 760px)');
   const hasGsap = !!(window.gsap && window.Draggable);
   if (hasGsap) gsap.registerPlugin(Draggable);
   const collapsedH = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--drawer')) || 118;
@@ -891,14 +958,17 @@
     return lum > 0.3 ? { hex: '#2b1810', op: 0.62, css: 'rgba(43,24,16,.62)' } : { hex: '#f3e8d6', op: 0.82, css: 'rgba(243,232,214,.82)' };
   }
   let toranW = 0;
+  const TORAN_EXTRA = 240; // phone: extra toran width (it starts 72px off the left edge, see CSS)
   function renderToran(force) {
     const on = state && state.scene.toran;
     toranEl.hidden = !on;
     if (!on) return;
-    const W = window.innerWidth;
+    // on a phone the scene pans, so the toran runs past both edges of the screen
+    const W = window.innerWidth + (mqMobile.matches ? TORAN_EXTRA : 0);
     if (!force && W === toranW && toranEl.src) return;
     toranW = W;
-    const T = SC.toran(W, W < 760);
+    const T = SC.toran(W, window.innerWidth < 760);
+    toranEl.style.width = W + 'px';
     toranEl.style.height = T.H + 'px';
     toranEl.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${T.H}" viewBox="0 0 ${W} ${T.H}">${T.inner}</svg>`);
   }
