@@ -3,6 +3,7 @@
   const { U, render: RD, gen: G, palette: PAL, store: ST } = R;
   const $ = (s) => document.querySelector(s);
   const mqMobile = matchMedia('(max-width: 760px)');
+  const floorEl = document.getElementById('floor');
 
   const ICONS = {
     lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
@@ -468,10 +469,18 @@
     const pw = palEl.offsetWidth || 148;
     return { min: -(pw + 12 - 18), max: 64 };
   };
+  // the pan moves just these layers (each on its own GPU layer), at most once per frame
+  const panEls = () => [$('.stage'), toranEl, trashEl, floorEl];
+  let panRaf = 0;
+  function applyPan() {
+    panRaf = 0;
+    const v = `${panX.toFixed(1)}px 0`;
+    for (const el of panEls()) if (el) el.style.translate = v;
+  }
   function setPan(x, ease) {
     document.documentElement.classList.toggle('pan-ease', !!ease);
     panX = x;
-    document.documentElement.style.setProperty('--pan', `${x.toFixed(1)}px`);
+    if (ease) { cancelAnimationFrame(panRaf); applyPan(); } else if (!panRaf) panRaf = requestAnimationFrame(applyPan);
   }
   function beginPan(e, sx) {
     panning = { id: e.pointerId, sx: sx === undefined ? e.clientX : sx, x0: panX, moved: false };
@@ -484,7 +493,7 @@
   window.addEventListener('pointermove', (e) => {
     if (!panning || e.pointerId !== panning.id) return;
     const dx = e.clientX - panning.sx;
-    if (!panning.moved) { if (Math.abs(dx) < 8) return; panning.moved = true; }
+    if (!panning.moved) { if (Math.abs(dx) < 8) return; panning.moved = true; document.documentElement.classList.add('panning'); }
     const { min, max } = panLimits();
     let x = panning.x0 + dx;
     // rubber band past the ends
@@ -495,6 +504,7 @@
     if (!panning || e.pointerId !== panning.id) return;
     const p = panning;
     panning = null;
+    document.documentElement.classList.remove('panning');
     if (!p.moved) return;
     swallowUntil = Date.now() + 350; // the click that ends a pan is not a tap
     const { min, max } = panLimits();
@@ -561,7 +571,7 @@
         // moved before the long press completed: it was a swipe, not a pick-up
         if (moved > 10) {
           clearTimeout(drag.pressT);
-          if (mqMobile.matches) { beginPan(e, drag.sx); panning.moved = true; }
+          if (mqMobile.matches) { beginPan(e, drag.sx); panning.moved = true; document.documentElement.classList.add('panning'); }
           drag = null;
         }
         return;
@@ -936,12 +946,12 @@
       sceneKey = key;
       const t = SC.floorTile(sc.floor);
       document.body.classList.toggle('on-floor', !!t);
-      document.body.style.backgroundImage = t
+      floorEl.style.backgroundImage = t
         ? `radial-gradient(120% 85% at 50% 30%, rgba(255,255,255,.14), rgba(255,255,255,0) 60%), radial-gradient(140% 110% at 50% 50%, rgba(20,8,4,0) 50%, rgba(20,8,4,.14)), url("${t.url}")`
         : '';
       // phones get smaller tiles, so the floor reads as tiles rather than a few giant squares
       const tk = mqMobile.matches ? 0.58 : 1;
-      document.body.style.backgroundSize = t ? `auto, auto, ${(t.w * tk).toFixed(1)}px ${(t.h * tk).toFixed(1)}px` : '';
+      floorEl.style.backgroundSize = t ? `auto, auto, ${(t.w * tk).toFixed(1)}px ${(t.h * tk).toFixed(1)}px` : '';
       document.documentElement.classList.toggle('toran-on', sc.toran);
       renderToran();
       setK();
