@@ -809,6 +809,9 @@
     const y = hasGsap ? gsap.getProperty(drawer, 'y') : (sheetOpen ? 0 : closedY);
     const p = closedY ? U.clamp(1 - y / closedY, 0, 1) : 0;
     drawer.style.setProperty('--p', p.toFixed(3));
+    // how much of the sheet is below the screen edge: its lists get that much extra room at the
+    // bottom, so at any height you can still scroll to the last row
+    drawer.style.setProperty('--hidden', `${Math.max(0, y).toFixed(0)}px`);
     drawer.classList.toggle('open', p > 0.5);
   }
   const setY = (y, dur) => {

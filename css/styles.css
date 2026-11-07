@@ -453,7 +453,8 @@ body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; 
   .sheet-tabs { display: flex; }
   .drawer[data-tab="decor"] .gallery, .drawer[data-tab="decor"] .gallery-grid, .drawer .gallery { display: none; }
   .drawer[data-tab="decor"] .pane-decor { display: block; flex: 1; min-height: 0; overflow-y: auto; }
-  .pane-decor .decor-body { overflow: visible; padding: 0 16px 24px; }
+  .pane-decor .decor-body { overflow: visible; padding: 0 16px calc(24px + var(--hidden, 0px)); }
+  .drawer .gallery-grid { padding-bottom: calc(16px + var(--hidden, 0px)); }
   .palette .sw-add { width: 40px; height: auto; }
   /* no room for a peeking bin on a phone: it only slides in while something is being dragged */
   .trash { transform: translate(-110%, -50%) rotate(14deg); }
@@ -542,7 +543,7 @@ body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; 
 @media (max-width: 760px) {
   /* the rangoli gets the whole stage: centred between the header and the Generate pill */
   :root {
-    --gen-h: 52px;
+    --gen-h: 44px;
     --stage-h: calc(100dvh - var(--header) - var(--drawer) - var(--gen-h) - 40px);
     --size: min(calc(100vw - 72px), calc(var(--stage-h) - var(--toran) - 40px));
     --stage-mid: calc(var(--header) + var(--toran) / 2 + var(--stage-h) / 2);
@@ -571,26 +572,26 @@ body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; 
     position: absolute; z-index: 16; left: calc(100% - 18px); top: calc(50% - 48px); right: auto; width: 148px; height: auto;
     flex-direction: column; gap: 4px; transform: translateY(-50%); transition: none;
   }
-  .palette .swatch:first-child { border-top-left-radius: 8px; }
-  .palette > :last-child { border-bottom-left-radius: 8px; }
+  .palette .swatch:first-child { border-radius: 8px 8px 0 0; }
+  .palette > :last-child { border-radius: 0 0 8px 8px; }
   .swatch { flex: none; height: 32px; padding: 0 4px 0 10px; flex-direction: row; align-items: center; justify-content: space-between; border-radius: 0; }
   .swatch .hex { font-size: 10.5px; letter-spacing: .02em; }
   .palette .sw-add { width: auto; height: 32px; }
 
   /* the bin peeks in from the left, like on desktop */
-  /* low on the left, just above the Generate pill (its centre: pill top − 16px gap − half its height) */
-  .trash { top: calc(100dvh - env(safe-area-inset-bottom) - var(--drawer) - 24px - var(--gen-h) - 16px - 46px); width: 70px; height: 92px; transform: translate(-30px, -50%) rotate(14deg); }
+  /* small, low on the left, level with the Generate pill */
+  .trash { top: calc(100dvh - env(safe-area-inset-bottom) - var(--drawer) - 24px - var(--gen-h) / 2); width: 52px; height: 68px; transform: translate(-22px, -50%) rotate(14deg); }
   body.dragging .trash { transform: translate(14px, -50%) rotate(0deg); }
 
   /* Generate: a pill pinned 24px above the drawer (the open drawer slides over it) */
   .btn.primary.gen-mobile {
     position: fixed; z-index: 19; left: 50%; transform: translateX(-50%);
     bottom: calc(var(--drawer) + 24px + env(safe-area-inset-bottom));
-    width: auto; height: var(--gen-h); padding: 0 38px; border-radius: 999px; border: 0;
+    width: auto; height: var(--gen-h); padding: 0 32px; border-radius: 999px; border: 0;
     /* low-opacity black frosted glass */
     background: rgba(20, 16, 12, .38); color: #fff6e6;
     -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3);
-    font: 600 18px/1 Fraunces, Georgia, serif; letter-spacing: .02em;
+    font: 600 17px/1 Fraunces, Georgia, serif; letter-spacing: .02em;
     box-shadow: 0 6px 20px rgba(20, 12, 6, .18), inset 0 0 0 1px rgba(255, 255, 255, .12);
   }
   .btn.primary.gen-mobile:hover { background: rgba(20, 16, 12, .38); }
