@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rangoli Motifs</title>
+  <style>
+    :root { --ink: #1f1b16; --muted: #7a7066; }
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #f3efe8; color: var(--ink); }
+    header { padding: 24px 24px 8px; max-width: 1100px; margin: 0 auto; }
+    h1 { font: 600 22px Georgia, serif; margin: 0 0 6px; }
+    p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; max-width: 760px; }
+    .grid { max-width: 1100px; margin: 0 auto; padding: 16px 24px 40px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+    figure { margin: 0; background: #fff; padding: 10px; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .pair svg { width: 100%; aspect-ratio: 1; display: block; background: #857a6e; }
+    .pair svg.light { background: #ece0c8; }
+    figcaption { font-size: 12.5px; font-weight: 600; margin-top: 8px; }
+    figcaption small { display: block; font-weight: 400; color: var(--muted); margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Motif sheet: drawn from real rangolis</h1>
+    <p>Each motif is shown twice, in the two styles seen in real floor rangolis: left with a thick white rice-flour outline (kolam style, on a concrete floor), right as colour bands edge to edge with no outline. Flat powder fills, simple silhouettes, details a finger can pour.</p>
+  </header>
+  <div class="grid" id="grid"></div>
+  <script src="js/util.js"></script>
+  <script src="js/motifs.js"></script>
+  <script>
+    // powder: a gentle hand wobble on every edge, slightly rough grains at the rim, and grain in the fill
+    const PW = '<filter id="pw" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">' +
+      '<feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="3" result="w"/>' +
+      '<feDisplacementMap in="SourceGraphic" in2="w" scale="2.6" xChannelSelector="R" yChannelSelector="G" result="d0"/>' +
+      '<feTurbulence type="fractalNoise" baseFrequency=".6" numOctaves="1" seed="5" result="n"/>' +
+      '<feDisplacementMap in="d0" in2="n" scale="1.4" xChannelSelector="R" yChannelSelector="G" result="d"/>' +
+      '<feTurbulence type="fractalNoise" baseFrequency="1.15" numOctaves="1" seed="12" result="g"/>' +
+      '<feColorMatrix in="g" type="matrix" values=".33 .33 .33 0 0 .33 .33 .33 0 0 .33 .33 .33 0 0 0 0 0 0 1" result="gg"/>' +
+      '<feComposite in="d" in2="gg" operator="arithmetic" k1=".45" k2=".8" k3="0" k4="0"/></filter>';
+    const SOURCES = {
+      peacockSide: 'step-by-step peacock drawing', peacockFan: 'flat geometric peacock illustration', lotusSide: 'A Harvest of Colors (Pongal kolam)',
+      lotusBud: 'Contrast lotus kolam', flower: 'A Colorful Butterfly Kolam', butterfly: 'A Colorful Butterfly Kolam', sun: 'A Harvest of Colors',
+      diya: 'Deepam / Deepavali rangolis', kalash: 'A Harvest of Colors (pot)', paisley: 'Alpana 2', swastika: 'common auspicious centre',
+      leaves: 'Contrast lotus kolam', swan: 'swan line drawing', sanskar: 'Sanskar Bharati style',
+      kolamLoops: 'Amma’s Muggu (Kollam), pulli kolam', pookalam: 'A pookalam', stepped: '32 Dots Rangoli', footprints: 'Diwali doorway footprints', hand: 'hasta / mehndi hand', om: 'Om rangoli', conch: 'shankh rangoli', fish: 'matsya rangoli',
+    };
+    // warm powder colours: kumkum, rani pink, peacock blue, leaf green, haldi
+    const kolam = { a: '#c8102e', b: '#d93b7a', c: '#1f5fae', d: '#2f8a3e', e: '#f2b31a', o: '#fff6e6' };
+    const band = { a: '#e8611a', b: '#c21f3a', c: '#13627a', d: '#2b7a37', e: '#f4c022', o: 'none' };
+    const sv = (m, col, cls) => { const k = R.motifKit(); const inner = m.draw(col, k); return `<svg viewBox="0 0 100 100" class="${cls || ''}"><defs>${PW}${k.defs}</defs><g filter="url(#pw)">${inner}</g></svg>`; };
+    document.getElementById('grid').innerHTML = Object.entries(R.motifs).map(([key, m]) =>
+      `<figure><div class="pair">${sv(m, kolam)}${sv(m, band, 'light')}</div>` +
+      `<figcaption>${m.name}<small>from: ${SOURCES[key] || ''}</small></figcaption></figure>`).join('');
+  </script>
+</body>
+</html>

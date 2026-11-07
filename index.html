@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Rangoli Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css?v=64" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="-12 -12 24 24" aria-hidden="true">
+        <g fill="#c2410c"><path d="M0-1C2-4 2-8 0-11C-2-8-2-4 0-1Z"/><path d="M0-1C2-4 2-8 0-11C-2-8-2-4 0-1Z" transform="rotate(90)"/><path d="M0-1C2-4 2-8 0-11C-2-8-2-4 0-1Z" transform="rotate(180)"/><path d="M0-1C2-4 2-8 0-11C-2-8-2-4 0-1Z" transform="rotate(270)"/></g>
+        <g fill="#f59e0b"><path d="M0-1C1.6-3 1.6-6 0-8C-1.6-6-1.6-3 0-1Z" transform="rotate(45)"/><path d="M0-1C1.6-3 1.6-6 0-8C-1.6-6-1.6-3 0-1Z" transform="rotate(135)"/><path d="M0-1C1.6-3 1.6-6 0-8C-1.6-6-1.6-3 0-1Z" transform="rotate(225)"/><path d="M0-1C1.6-3 1.6-6 0-8C-1.6-6-1.6-3 0-1Z" transform="rotate(315)"/></g>
+        <circle r="1.8" fill="#7c2d12"/>
+      </svg>
+      <span>Rangoli</span>
+    </div>
+    <div class="hint">Press space to generate</div>
+    <div class="actions">
+      <div class="menu-wrap">
+        <button class="btn icon" id="btnExport" title="Export" aria-label="Export" data-icon="download"></button>
+        <div class="pop" id="popExport">
+          <button data-export="scene" data-icon="frame"><span>Whole picture<small>PNG · floor, toran, stickers and rangoli</small></span></button>
+          <button data-export="pngt" data-icon="transparent"><span>Rangoli only<small>PNG · transparent background</small></span></button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <img class="toran" id="toran" alt="" aria-hidden="true" hidden>
+
+  <main class="stage">
+    <div class="canvas-wrap" id="canvasWrap">
+      <div class="wash" aria-hidden="true"></div>
+      <div class="stack" id="stack"></div>
+      <svg id="canvas" viewBox="-440 -440 880 880" role="img" aria-label="Generated rangoli"></svg>
+      <div class="stickers" id="stickers"></div>
+      <div class="toolbar" id="toolbar" hidden></div>
+      <div class="toolbar stkbar" id="stkbar" hidden></div>
+    </div>
+    <aside class="palette" id="palette" aria-label="Colour palette"></aside>
+    <button class="btn primary gen-mobile" id="btnGenerateMobile" data-icon="spark"><span>Generate</span></button>
+  </main>
+
+  <div class="trash" id="trash" title="Drag an element here to delete it" aria-hidden="true"></div>
+  <!-- Decorate: a drawer on the right edge. The tab rides on its left edge; it slides in over the palette. -->
+  <div class="decor" id="decor">
+    <button class="decor-tab" id="decorTab" aria-expanded="false" aria-controls="decorPanel"><span>Decorate</span></button>
+    <aside class="decor-panel" id="decorPanel" aria-label="Decorate">
+    <div class="decor-body">
+      <div class="decor-sec">
+        <h3>Floor</h3>
+        <div class="floors" id="floors"></div>
+        <label class="tgl"><input type="checkbox" id="toranTgl"><span class="tgl-ui"></span><span>Neem &amp; marigold toran</span></label>
+      </div>
+      <div id="stkCats"></div>
+      <p class="decor-tip">Drag a sticker onto the floor, or tap to add it</p>
+    </div>
+    </aside>
+  </div>
+  <div class="scrim" id="scrim"></div>
+  <section class="drawer" id="drawer" aria-label="Gallery">
+    <div class="drawer-handle" id="drawerHandle">
+      <span class="pill"></span>
+      <div class="sheet-tabs" role="tablist">
+        <button data-tab="decor" role="tab">Decorate</button>
+        <button data-tab="gallery" role="tab">Gallery</button>
+      </div>
+    </div>
+    <div class="pane-decor" id="paneDecor"></div>
+    <div class="gallery" id="gallery"></div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </section>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <!-- shown before a new design pushes the oldest one out of a full gallery -->
+  <dialog class="confirm" id="fullDlg" aria-labelledby="fullTitle" tabindex="-1">
+    <form method="dialog">
+      <h2 id="fullTitle">Gallery is full</h2>
+      <p id="fullText">Your gallery keeps your last 50 designs. A new one will remove the oldest.</p>
+      <label class="cf-check"><input type="checkbox" id="fullSkip"> Don't ask again</label>
+      <div class="cf-actions">
+        <button class="btn" value="cancel">Cancel</button>
+        <button class="btn primary" value="ok">Remove oldest &amp; generate</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/Draggable.min.js"></script>
+  <script src="js/util.js?v=64"></script>
+  <script src="js/palette.js?v=64"></script>
+  <script src="js/motifs.js?v=64"></script>
+  <script src="js/render.js?v=64"></script>
+  <script src="js/scene.js?v=64"></script>
+  <script src="js/generator.js?v=64"></script>
+  <script src="js/store.js?v=64"></script>
+  <script src="js/app.js?v=64"></script>
+</body>
+</html>

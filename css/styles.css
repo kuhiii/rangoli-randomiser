@@ -1,0 +1,544 @@
+:root {
+  --bg: #ffffff;
+  --ink: #1f1b16;
+  --muted: #7a7066;
+  --line: #e7e0d6;
+  --card: #fffdf9;
+  --hover: #f3ede4;
+  --accent: #c2410c;
+  --shadow: 0 1px 2px rgba(60, 40, 20, .06), 0 10px 32px rgba(60, 40, 20, .09);
+  --header: 60px;
+  --drawer: 118px;
+  --toran: 28px; /* room under the toran, kept even when it's off so the rangoli never resizes */
+  --size: calc(min(calc(100dvh - var(--header) - var(--drawer) - 8px - var(--toran)), calc(100vw - 420px)) * .88);
+}
+/* room under the toran so its hangings don't sit on the rangoli */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+svg { display: block; }
+
+/* ------------------------------------------------------------------ header */
+.topbar {
+  position: relative; z-index: 13; background: none;
+  height: var(--header);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 0 20px;
+}
+.brand { display: flex; align-items: center; gap: 9px; font-family: Fraunces, Georgia, serif; font-size: 21px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+.brand .logo { width: 28px; height: 28px; }
+.hint {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  max-width: calc(100% - 320px); color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+kbd { font: 600 11px Inter, system-ui, sans-serif; background: var(--card); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 0; padding: 1px 6px; color: var(--ink); }
+.actions { display: flex; align-items: center; gap: 6px; }
+.btn {
+  height: 36px; padding: 0 12px; border-radius: 0;
+  border: 1px solid var(--line); background: var(--card);
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;
+  transition: background .15s, border-color .15s, transform .1s;
+}
+.btn:hover { background: var(--hover); }
+.btn:active { transform: translateY(1px); }
+.btn svg { width: 17px; height: 17px; flex: none; }
+.btn.icon { width: 36px; padding: 0; justify-content: center; }
+#btnExport { border: 0; background: none; }
+#btnExport:hover { background: none; opacity: .6; }
+#btnExport svg { width: 20px; height: 20px; }
+.btn.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+.btn.primary:hover { background: #3a332b; }
+.btn:disabled { opacity: .35; cursor: default; transform: none; }
+.gen-mobile { display: none; }
+
+.menu-wrap { position: relative; }
+.pop {
+  position: absolute; top: 44px; right: 0; z-index: 40;
+  background: var(--card); border: 1px solid var(--line); border-radius: 0; box-shadow: var(--shadow);
+  padding: 6px; min-width: 240px; display: none;
+}
+.pop.on { display: block; }
+.pop button {
+  display: flex; width: 100%; align-items: center; gap: 12px; padding: 9px 10px;
+  border: 0; background: none; border-radius: 0; cursor: pointer; text-align: left; font-size: 13px; font-weight: 500;
+}
+.pop button:hover { background: var(--hover); }
+.pop button svg { width: 18px; height: 18px; color: var(--accent); flex: none; }
+.pop small { display: block; color: var(--muted); font-weight: 400; font-size: 11.5px; margin-top: 1px; }
+
+/* ------------------------------------------------------------------- stage */
+.stage {
+  height: calc(100dvh - var(--header) - var(--drawer));
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  padding: var(--toran) 64px 8px 36px; /* a little extra room on the right sits the rangoli optically centred against the palette */
+}
+.canvas-wrap {
+  position: relative; flex: none;
+  width: var(--size); height: var(--size);
+  /* no frame: the rangoli sits straight on the page */
+  background: transparent;
+}
+.canvas-wrap > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+#canvas { touch-action: none; user-select: none; -webkit-user-select: none; }
+/* art: one <svg> per element, each its own GPU layer, so hover dimming and dragging only
+   recomposite and never repaint the powder filter */
+.stack { position: absolute; inset: 0; pointer-events: none; }
+.stack > .defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.stack > .ly {
+  position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
+  transform-origin: 50% 50%; will-change: transform, opacity;
+  transition: opacity .22s ease-out, transform .34s cubic-bezier(.22, .8, .24, 1);
+}
+/* the held element is moved every frame by the soft follow, so no transform transition on it */
+.stack > .ly.held { transition: opacity .22s ease-out; }
+.stack.snap { z-index: 1; }
+.stack.has-focus > .ly:not(.focus) { opacity: .28; }
+/* while layers are dimmed, a soft warm disc fades in under the rangoli so the floor tiles don't
+   show through the faded layers (opacity only, so hover stays smooth) */
+.stack::before {
+  content: ''; position: absolute; inset: calc(50% - var(--rr, 50%)); border-radius: 50%; pointer-events: none; opacity: 0; will-change: opacity;
+  background: radial-gradient(circle closest-side, #faf5ec 0 94%, rgba(250, 245, 236, 0) 100%);
+  transition: opacity .22s ease-out;
+}
+.stack.has-focus::before { opacity: .94; }
+.stack.drag-on::before { opacity: .8; }
+.stack.drag-on > .ly:not(.dragged) { opacity: .5; }
+.stack > .ly.dragged { z-index: 2; filter: drop-shadow(0 8px 10px rgba(40, 25, 10, .22)); }
+/* hit areas only: transparent and on top */
+#canvas .layer { cursor: grab; }
+#canvas.drag-on { cursor: grabbing; }
+#canvas.drag-on .layer { cursor: grabbing; }
+#canvas.drag-on .badges { display: none; }
+#canvas .badges, #canvas #overlay { pointer-events: none; }
+#canvas .guide { fill: none; stroke: #1f1b16; stroke-opacity: .1; }
+
+.mini {
+  width: 28px; height: 28px; border: 0; background: transparent; border-radius: 0;
+  display: grid; place-items: center; cursor: pointer; color: var(--ink);
+}
+.mini:hover { background: var(--hover); }
+.mini.on { background: var(--ink); color: #fff; }
+.mini svg { width: 15px; height: 15px; }
+
+.toolbar {
+  position: absolute; z-index: 6; left: 0; top: 0;
+  display: flex; align-items: center; gap: 6px; padding: 0;
+  background: none; border: 0;
+  animation: tb-in .12s ease-out; will-change: transform;
+}
+.toolbar.glide { animation: none; transition: transform .16s cubic-bezier(.2, .8, .2, 1); }
+.toolbar[hidden] { display: none; }
+@keyframes tb-in { from { opacity: 0; } }
+/* each action is its own frosted, rounded chip */
+.toolbar .mini {
+  width: 36px; height: 36px; border-radius: 12px;
+  background: rgba(255, 253, 249, .62); backdrop-filter: blur(12px) saturate(1.2); -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, .7); box-shadow: 0 2px 10px rgba(40, 25, 10, .14);
+  transition: background .15s, transform .15s;
+}
+.toolbar .mini:hover { background: rgba(255, 253, 249, .85); transform: translateY(-1px); }
+.toolbar .mini.on { background: rgba(31, 27, 22, .88); color: #fff; border-color: rgba(31, 27, 22, .88); }
+.toolbar .mini svg { width: 16px; height: 16px; }
+
+/* A real little trash can: peeks in from the left edge, tilted; rolls fully in while something is dragged,
+   and its lid swings open when an element is held over it. */
+.trash {
+  position: fixed; left: 0; top: calc((100dvh + var(--header) - var(--drawer)) / 2); z-index: 15; /* centred on the stage, not the window */
+  width: 84px; height: 110px; cursor: default;
+  transform: translate(-30px, -50%) rotate(14deg);
+  transition: transform .32s cubic-bezier(.2, .8, .2, 1);
+  filter: drop-shadow(0 4px 6px rgba(40, 30, 20, .18));
+}
+.trash .can { width: 100%; height: 100%; overflow: visible; }
+/* red powder tint when something is held over the bin */
+.can-tint { fill: #c8402e; opacity: 0; transition: opacity .15s; }
+.can-lid { transform-box: view-box; transform-origin: 56px 90px; transition: transform .26s cubic-bezier(.3, 1.4, .5, 1); }
+/* hover: peek out a little further and explain itself */
+.trash:hover { transform: translate(-6px, -50%) rotate(0deg); }
+.trash-label {
+  position: absolute; left: 100%; top: 50%; margin-left: 10px;
+  transform: translate(-6px, -50%); opacity: 0; pointer-events: none;
+  background: var(--ink); color: #fff; font-size: 12px; font-weight: 500; white-space: nowrap; padding: 6px 10px;
+  transition: opacity .18s, transform .18s;
+}
+.trash:hover .trash-label, .trash.hot .trash-label { opacity: 1; transform: translate(0, -50%); }
+.trash.hot .trash-label { background: #dc2626; }
+.trash.eat { transform: translate(22px, -50%) rotate(0deg); }
+.trash.eat .trash-label { opacity: 0; }
+.trash.hot { transform: translate(22px, -50%) scale(1.12) !important; }
+/* the leaning lid tips away to open the bin */
+.trash.hot .can-lid { transform: translate(6px, 2px) rotate(24deg); }
+.trash.hot .can-tint { opacity: .5; }
+/* swallowed: lid slams, the can hops and wobbles */
+.trash.gulp .can { animation: gulp .5s cubic-bezier(.3, 1.4, .5, 1); transform-origin: 50% 100%; }
+@keyframes gulp {
+  0% { transform: scale(1.12); }
+  30% { transform: scale(.9, 1.1) translateY(-6px); }
+  55% { transform: scale(1.06, .94) rotate(-4deg); }
+  75% { transform: rotate(3deg); }
+  100% { transform: none; }
+}
+/* over the bin: the original fades back, a small copy bobs above the open lid */
+.stack > .ly.doomed { opacity: 0 !important; }
+.ghost {
+  position: fixed; z-index: 16; width: 76px; height: 76px; margin: -38px 0 0 -38px; pointer-events: none;
+  background: #fff; padding: 6px; box-sizing: border-box; box-shadow: 0 6px 16px rgba(40, 25, 10, .16);
+  animation: ghost-in .22s cubic-bezier(.2, 1.4, .4, 1) both, ghost-bob 1s ease-in-out .22s infinite alternate;
+}
+.ghost svg { width: 100%; height: 100%; overflow: hidden; }
+.ghost img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.ghost.bare { background: none; box-shadow: none; padding: 0; }
+.ghost.fall { animation: ghost-fall .22s cubic-bezier(.5, 0, .8, .4) forwards; }
+.ghost.gone { animation: ghost-gone .16s ease-out forwards; }
+@keyframes ghost-in { from { transform: translateY(14px) scale(.4); opacity: 0; } }
+@keyframes ghost-bob { to { transform: translateY(-5px); } }
+@keyframes ghost-fall { to { transform: translateY(52px) scale(.35); opacity: 0; } }
+@keyframes ghost-gone { to { transform: scale(.6); opacity: 0; } }
+
+/* ----------------------------------------------------------------- palette */
+.palette {
+  position: fixed; right: 64px; top: calc((100dvh + var(--header) - var(--drawer)) / 2); transform: translateY(-50%); z-index: 4;
+  width: clamp(96px, 8.5vw, 124px);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.swatch {
+  flex: none; height: 44px; position: relative; border-radius: 0; background: var(--c); color: var(--t);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06);
+  display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 4px; padding: 0 4px 0 10px;
+  transition: background .25s;
+}
+.swatch .hex { font: 600 10.5px ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: .03em; cursor: pointer; opacity: .92; padding: 2px 3px; margin: -2px -3px; border-radius: 0; }
+.swatch .hex:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.swatch input[type=color] { position: absolute; left: 10px; bottom: 10px; width: 1px; height: 1px; opacity: 0; border: 0; padding: 0; pointer-events: none; }
+.sw-actions { display: flex; align-items: center; gap: 0; opacity: 0; transition: opacity .15s; }
+.swatch:hover .sw-actions { opacity: 1; }
+.swatch.locked .sw-actions { opacity: 1; }
+.swatch.locked:not(:hover) .sw-actions [data-act=reroll] { opacity: 0; }
+.sw-actions button { width: 24px; height: 24px; border: 0; background: transparent; border-radius: 0; display: grid; place-items: center; cursor: pointer; color: inherit; }
+.sw-actions button:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
+.sw-actions svg { width: 13px; height: 13px; }
+.sw-add {
+  flex: none; height: 36px; border: 1px dashed rgba(31, 27, 22, .28); background: rgba(255, 255, 255, .35);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  display: grid; place-items: center; cursor: pointer; color: var(--ink); transition: background .15s, border-color .15s;
+}
+.sw-add:hover { background: rgba(255, 255, 255, .7); border-color: rgba(31, 27, 22, .5); }
+.sw-add svg { width: 16px; height: 16px; }
+
+/* ------------------------------------------------------------------ drawer */
+.scrim { position: fixed; inset: 0; z-index: 19; background: rgba(31, 27, 22, .06); opacity: 0; pointer-events: none; transition: opacity .25s; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  /* full sheet height, slid down so only the strip shows; JS (GSAP) moves it with a transform */
+  height: 80dvh; transform: translateY(calc(80dvh - var(--drawer))); will-change: transform;
+  display: flex; flex-direction: column;
+  border-top: 1px solid rgba(255, 255, 255, .6); border-radius: 24px 24px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.drawer-handle {
+  flex: none; height: 22px; position: relative;
+  display: flex; align-items: center; gap: 12px; padding: 4px 20px 0;
+  cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none;
+  font-size: 12px; color: var(--muted);
+}
+.pill { position: absolute; top: 7px; left: 50%; transform: translateX(-50%); width: 42px; height: 4px; border-radius: 0; background: #d8cfc2; }
+.dh-title { color: var(--ink); font-weight: 600; }
+.dh-title b { font-weight: 500; color: var(--muted); margin-left: 3px; }
+.dh-hint { margin-left: auto; }
+.dh-clear { display: none; border: 0; background: none; color: var(--muted); font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 0; }
+.dh-clear:hover { background: var(--hover); color: #b91c1c; }
+.drawer.open .dh-clear { display: block; }
+.gallery {
+  flex: 1; min-height: 0; display: flex; gap: 6px;
+  overflow-x: auto; overflow-y: hidden; padding: 4px 20px 14px;
+  scrollbar-width: thin; overscroll-behavior: contain;
+}
+/* strip and grid cross-fade with how far the sheet is open (--p: 0 → 1, set while it moves) */
+.drawer { --p: 0; }
+.gallery { opacity: clamp(0, calc(1 - var(--p) * 2.4), 1); }
+.drawer.open .gallery { pointer-events: none; }
+.gallery-grid {
+  position: absolute; left: 0; right: 0; top: 22px; bottom: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; align-content: start;
+  overflow-y: auto; overscroll-behavior: contain; padding: 8px 20px 20px;
+  opacity: clamp(0, calc(var(--p) * 1.7 - .35), 1);
+  transform: translateY(calc((1 - var(--p)) * 26px)) scale(calc(.97 + var(--p) * .03)); transform-origin: 50% 0;
+  pointer-events: none;
+}
+.drawer.open .gallery-grid { pointer-events: auto; }
+.gallery-grid .thumb { width: auto; height: 0; padding-bottom: 100%; border-radius: 16px; content-visibility: auto; contain-intrinsic-size: 150px; }
+.gallery-grid .thumb-actions { gap: 6px; }
+.gallery-grid .thumb-actions button { width: 36px; height: 36px; border-radius: 12px; }
+.gallery-grid .thumb-actions svg { width: 16px; height: 16px; }
+/* while the sheet moves: no backdrop blur (re-blurring a large moving area every frame stutters) */
+.drawer.moving { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; background: rgba(255, 255, 255, .34) !important; }
+body.sheet-drag .stage { pointer-events: none; }
+.thumb {
+  margin: 0; flex: none; width: 68px; height: 68px; border-radius: 12px; overflow: hidden;
+  position: relative; cursor: pointer; background: #f6f5f3;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06);
+}
+.thumb img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.thumb.current { outline: 2px solid var(--ink); outline-offset: 2px; }
+.thumb.source { outline: 2px dashed var(--muted); outline-offset: 2px; }
+.thumb-actions {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 5px;
+  background: none; opacity: 0; transition: opacity .15s;
+}
+.thumb:hover .thumb-actions { opacity: 1; }
+/* same chips as the layer hover toolbar: separate frosted, rounded buttons */
+.thumb-actions button {
+  width: 30px; height: 30px; padding: 0; border-radius: 10px; color: var(--ink); cursor: pointer;
+  display: grid; place-items: center;
+  background: rgba(255, 253, 249, .62); backdrop-filter: blur(12px) saturate(1.2); -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, .7); box-shadow: 0 2px 10px rgba(40, 25, 10, .14);
+  transition: background .15s, transform .15s;
+}
+.thumb-actions button:hover { background: rgba(255, 253, 249, .85); transform: translateY(-1px); }
+.thumb-actions svg { width: 15px; height: 15px; }
+.thumb-actions span { display: none; }
+.gallery-empty { color: var(--muted); font-size: 12.5px; align-self: center; }
+
+/* ------------------------------------------------------------------- toast */
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--drawer) + 16px); z-index: 50;
+  transform: translate(-50%, 10px); opacity: 0; pointer-events: none;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--ink); color: #fff; font-size: 13px; padding: 9px 10px 9px 14px; border-radius: 0; box-shadow: var(--shadow);
+  transition: opacity .2s, transform .2s;
+}
+.toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button { border: 0; background: rgba(255, 255, 255, .16); color: #fff; border-radius: 0; padding: 4px 10px; font-weight: 600; font-size: 12px; cursor: pointer; }
+.toast:not(:has(button)) { padding-right: 14px; }
+
+/* touch devices: no hover, so keep controls visible */
+@media (hover: none) {
+  .sw-actions { opacity: 1; }
+  .swatch.locked .sw-actions [data-act=reroll] { opacity: 1 !important; }
+  .thumb-actions { opacity: 1; background: transparent; align-items: flex-end; justify-content: flex-end; padding: 4px; }
+  .drawer:not(.open) .thumb-actions [data-act=download] { display: none; }
+}
+
+/* ------------------------------------------------------------------ mobile */
+@media (max-width: 760px) {
+  :root { --header: 56px; --drawer: 104px; --size: calc((100vw - 56px) * .9); }
+  body { overflow-x: hidden; overflow-y: auto; }
+  .topbar { padding: 0 16px; gap: 8px; }
+  .hint, .lbl, .gen-top { display: none; }
+  .brand { font-size: 19px; }
+  .actions { gap: 4px; }
+  .btn { padding: 0 10px; }
+  .btn:not(.primary) { width: 36px; padding: 0; justify-content: center; }
+  .stage { flex-direction: column; justify-content: flex-start; height: auto; padding: 4px 16px calc(var(--drawer) + 20px); gap: 12px; }
+  .canvas-wrap { border-radius: 0; }
+  .palette { position: static; transform: none; width: var(--size); height: 58px; flex-direction: row; gap: 4px; }
+  .swatch { flex: 1; height: auto; min-width: 0; padding: 4px; flex-direction: column; align-items: center; justify-content: space-between; }
+  .swatch .hex { font-size: 9.5px; letter-spacing: .02em; }
+  .sw-actions button { width: 24px; height: 24px; }
+  .sw-actions svg { width: 13px; height: 13px; }
+  .gen-mobile { display: flex; width: var(--size); height: 48px; justify-content: center; font-size: 15px; border-radius: 0; }
+  .form-chip { top: 8px; left: 8px; font-size: 11px; }
+  .dh-hint { display: none; }
+  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 5px; padding: 8px 16px 16px; top: 64px; }
+  .gallery { padding: 4px 16px 12px; gap: 5px; }
+  .pop { right: -40px; }
+}
+
+/* ------------------------------------------------------- floor & toran */
+body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; }
+/* iOS-style bar: a frosted tint that blurs the floor behind it and fades out toward the bottom,
+   so the text stays readable without a hard white strip */
+.topbar::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; bottom: -26px; z-index: -1; pointer-events: none;
+  /* barely-there tint: the blur does the work of keeping the text readable */
+  background: linear-gradient(to bottom, rgba(255, 252, 248, .16) 0%, rgba(255, 252, 248, .08) 55%, rgba(255, 252, 248, 0) 100%);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1); backdrop-filter: blur(8px) saturate(1.1);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0%, #000 50%, transparent 100%);
+}
+.toran { position: fixed; left: 0; top: 0; width: 100vw; z-index: 12; pointer-events: none; display: block; user-select: none; }
+.toran[hidden] { display: none; }
+#toolbar, .stkbar { z-index: 14; }
+
+/* ------------------------------------------------------------ stickers */
+.stickers { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+.stk {
+  position: absolute;
+  left: calc(50% + var(--x) * var(--k) * 1px); top: calc(50% + var(--y) * var(--k) * 1px);
+  width: calc(var(--s) * var(--k) * var(--aw, 1) * 1px); height: calc(var(--s) * var(--k) * var(--ah, 1) * 1px);
+  transform: translate(-50%, -50%) rotate(var(--r)) scaleX(var(--f));
+  pointer-events: auto; cursor: grab; touch-action: none; will-change: transform;
+  transition: opacity .2s ease-out, transform .3s cubic-bezier(.22, .8, .24, 1), width .25s cubic-bezier(.22, .8, .24, 1), height .25s cubic-bezier(.22, .8, .24, 1);
+}
+.stk img { width: 100%; height: 100%; display: block; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.stk.held { cursor: grabbing; z-index: 999 !important; filter: drop-shadow(0 10px 12px rgba(30, 15, 5, .28)); transition: opacity .2s ease-out; }
+.stk.doomed { opacity: 0; }
+.stk-float {
+  position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none;
+  transform: translate(-50%, -50%) rotate(-6deg); filter: drop-shadow(0 10px 12px rgba(30, 15, 5, .3));
+}
+
+/* ------------------------------------------- decorate drawer (right edge) */
+/* the wrapper slides; the frosted panel and the tab are siblings so each gets its own blur */
+.decor {
+  position: fixed; right: 0; top: calc((100dvh + var(--header) - var(--drawer)) / 2); z-index: 25;
+  width: min(320px, 86vw); height: min(calc(100dvh - var(--header) - var(--drawer) - 36px), 600px);
+  transform: translate(100%, -50%); transition: transform .42s cubic-bezier(.22, .8, .24, 1);
+}
+.decor.open { transform: translate(0, -50%); }
+.decor.open.peek { transform: translate(100%, -50%); }
+.decor-panel {
+  position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden;
+  border-radius: 24px 0 0 24px; border: 1px solid rgba(255, 255, 255, .6); border-right: 0;
+}
+.decor-tab {
+  position: absolute; right: 100%; top: 50%; transform: translateY(-50%);
+  width: 40px; height: 140px; border: 1px solid rgba(255, 255, 255, .6); border-right: 0; border-radius: 14px 0 0 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer;
+  color: var(--ink); font: 600 13px Inter, system-ui, sans-serif; letter-spacing: .02em;
+}
+.decor-tab span { writing-mode: vertical-rl; }
+.decor-tab:hover { color: var(--accent); }
+/* both drawers: barely-white frosted glass */
+.decor-panel, .decor-tab, .drawer {
+  background: rgba(255, 255, 255, .28) !important;
+  -webkit-backdrop-filter: blur(4px) saturate(1.15); backdrop-filter: blur(4px) saturate(1.15);
+  box-shadow: 0 0 18px rgba(60, 40, 20, .07);
+}
+.decor-body { overflow-y: auto; padding: 4px 18px 18px; overscroll-behavior: contain; }
+.decor-sec h3 { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 8px; }
+.floors { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.floor-btn { display: flex; flex-direction: column; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-size: 12px; font-weight: 500; }
+.floor-sw { display: block; height: 52px; border: 1px solid var(--line); }
+.floor-btn.on .floor-sw { outline: 2px solid var(--ink); outline-offset: 2px; }
+.tgl { display: flex; align-items: center; gap: 10px; margin-top: 16px; font-size: 13px; cursor: pointer; }
+.tgl input { position: absolute; opacity: 0; pointer-events: none; }
+.tgl-ui { width: 34px; height: 20px; background: #d9d2c7; position: relative; transition: background .2s; flex: none; }
+.tgl-ui::after { content: ''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; background: #fff; transition: transform .2s; }
+.tgl input:checked + .tgl-ui { background: var(--accent); }
+.tgl input:checked + .tgl-ui::after { transform: translateX(14px); }
+.tgl input:focus-visible + .tgl-ui { outline: 2px solid var(--ink); outline-offset: 2px; }
+.stk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.stk-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; border: 0; background: rgba(255, 255, 255, .45); padding: 6px 4px 7px;
+  cursor: grab; font-size: 10.5px; color: var(--ink); touch-action: none; transition: background .15s, transform .2s cubic-bezier(.2, .8, .2, 1);
+}
+.stk-tile:hover { background: rgba(255, 255, 255, .8); transform: translateY(-2px); }
+.stk-tile img { width: 100%; aspect-ratio: 1; object-fit: contain; pointer-events: none; }
+.decor-tip { font-size: 11.5px; color: var(--muted); margin: 16px 0 0; }
+
+@media (max-width: 760px) {
+  :root { --toran: 14px; }
+  .stage { padding-top: calc(var(--toran) + 4px); }
+  .stk-grid { grid-template-columns: repeat(4, 1fr); }
+  .floors { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* the swept, washed patch under the rangoli so it reads on a patterned floor */
+.wash { position: absolute; inset: -6%; border-radius: 50%; pointer-events: none; background: radial-gradient(closest-side, var(--wash, transparent) 78%, transparent 100%); transition: background .4s; }
+
+/* ------------------------------------------------ sheet tabs (mobile only) */
+.sheet-tabs, .pane-decor { display: none; }
+.sheet-tabs { gap: 4px; margin: 14px auto 0; padding: 3px; background: rgba(31, 27, 22, .06); border-radius: 12px; }
+.sheet-tabs button { border: 0; background: none; padding: 7px 18px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.sheet-tabs button.on { background: rgba(255, 255, 255, .9); color: var(--ink); box-shadow: 0 1px 4px rgba(40, 25, 10, .1); }
+@media (max-width: 760px) {
+  :root { --drawer: 74px; }
+  .decor { display: none; }
+  .drawer { height: 78dvh; transform: translateY(calc(78dvh - var(--drawer))); }
+  .drawer-handle { height: auto; padding: 4px 16px 6px; }
+  .sheet-tabs { display: flex; }
+  .drawer[data-tab="decor"] .gallery, .drawer[data-tab="decor"] .gallery-grid, .drawer .gallery { display: none; }
+  .drawer[data-tab="decor"] .pane-decor { display: block; flex: 1; min-height: 0; overflow-y: auto; }
+  .pane-decor .decor-body { overflow: visible; padding: 0 16px 24px; }
+  .palette .sw-add { width: 40px; height: auto; }
+  /* no room for a peeking bin on a phone: it only slides in while something is being dragged */
+  .trash { transform: translate(-110%, -50%) rotate(14deg); }
+  .trash .trash-label { display: none; }
+  body.dragging .trash { transform: translate(22px, -50%) rotate(0deg); }
+}
+
+/* sticker selection, Figma/Canva style: outline on hover; box + corner handles + green rotate dot when selected */
+.stk-box { position: absolute; inset: -5px; border: 1.5px solid #0d99ff; pointer-events: none; opacity: 0; transition: opacity .12s; }
+.stk:hover .stk-box, .stk.sel .stk-box { opacity: 1; }
+.stk.held .stk-box { opacity: 0; }
+.stk-box .h, .stk-box .rot { display: none; }
+.stk.sel .stk-box .h, .stk.sel .stk-box .rot { display: block; }
+.stk-box .h {
+  position: absolute; width: 11px; height: 11px; margin: -6.5px; background: #fff; border: 1.5px solid #0d99ff;
+  pointer-events: auto; touch-action: none;
+}
+.stk-box .nw { left: 0; top: 0; cursor: nwse-resize; } .stk-box .se { left: 100%; top: 100%; cursor: nwse-resize; }
+.stk-box .ne { left: 100%; top: 0; cursor: nesw-resize; } .stk-box .sw { left: 0; top: 100%; cursor: nesw-resize; }
+.stk-box .rot { position: absolute; left: 50%; top: 100%; width: 1.5px; height: 22px; margin-left: -.75px; background: #0d99ff; }
+.stk-box .rot-dot {
+  position: absolute; left: 50%; bottom: -14px; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%;
+  background: #22c55e; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+  pointer-events: auto; touch-action: none; cursor: grab;
+}
+.stk-box .rot-dot:active { cursor: grabbing; }
+.stk.sizing { transition: none; }
+
+/* "+" colour picker popover */
+.add-pop {
+  position: fixed; z-index: 45; width: 212px; padding: 12px; border-radius: 16px;
+  background: rgba(255, 255, 255, .78); -webkit-backdrop-filter: blur(12px) saturate(1.2); backdrop-filter: blur(12px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, .7); box-shadow: 0 10px 30px rgba(40, 25, 10, .18);
+  animation: ap-in .16s ease-out;
+}
+.add-pop[hidden] { display: none; }
+@keyframes ap-in { from { opacity: 0; transform: translateY(4px); } }
+.ap-h { font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 2px 2px 7px; }
+.ap-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 12px; }
+.ap-sw { aspect-ratio: 1; border: 0; border-radius: 8px; background: var(--c); cursor: pointer; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); transition: transform .12s; }
+.ap-sw:hover { transform: scale(1.12); }
+.ap-custom { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .7); cursor: pointer; font-size: 12.5px; font-weight: 500; position: relative; }
+.ap-custom:hover { background: #fff; }
+.ap-custom svg { width: 15px; height: 15px; color: var(--accent); }
+.ap-custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; border: 0; padding: 0; }
+
+/* the Decorate tab keeps its earlier, more solid glass so it reads clearly at the edge */
+.decor-tab { background: rgba(255, 255, 255, .5) !important; -webkit-backdrop-filter: blur(10px) saturate(1.2); backdrop-filter: blur(10px) saturate(1.2); }
+
+/* the hint sits over the busy toran: give it its own small frosted pill so it always reads */
+.hint {
+  color: #1f1b16; font-weight: 500;
+}
+.hint kbd { border-radius: 999px; padding: 1px 8px; }
+
+/* fill: gallery sheet lighter, decorate panel more solid */
+.drawer:not(.moving) { background: rgba(255, 255, 255, .16) !important; }
+.decor-panel { background: rgba(255, 255, 255, .58) !important; }
+
+/* gentle drop shadow on everything that is UI (not the rangoli or the stickers) */
+:root { --soft: 0 6px 26px 4px rgba(74, 42, 22, .10); --soft-f: drop-shadow(0 6px 14px rgba(74, 42, 22, .10)); }
+.btn:not(#btnExport), .toolbar .mini, .sw-add, .pop, .add-pop, .toast,
+.decor-panel, .decor-tab, .drawer, .gen-mobile { box-shadow: var(--soft); }
+.swatch, .thumb { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06), var(--soft); }
+#btnExport svg, .brand { filter: var(--soft-f); }
+.toran { filter: var(--soft-f); }
+.trash { filter: var(--soft-f); }
+
+/* confirmation modal (native <dialog>) */
+.confirm {
+  width: min(380px, calc(100vw - 32px)); padding: 24px 22px 20px; text-align: center; border: 1px solid rgba(255, 255, 255, .7); border-radius: 20px;
+  background: rgba(255, 253, 249, .9); -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  color: var(--ink); box-shadow: var(--soft), 0 20px 60px rgba(74, 42, 22, .18);
+}
+.confirm:focus { outline: none; }
+.confirm::backdrop { background: rgba(31, 27, 22, .22); }
+.confirm[open] { animation: cf-in .22s cubic-bezier(.2, .8, .2, 1); }
+@keyframes cf-in { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+.confirm h2 { margin: 0 0 4px; font: 600 17px Fraunces, Georgia, serif; }
+.confirm p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.cf-check { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 16px 0 0; font-size: 13px; color: var(--muted); cursor: pointer; }
+.cf-actions { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+.cf-actions .btn { border-radius: 10px; }
