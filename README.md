@@ -20,7 +20,7 @@ Then visit http://localhost:5317.
 | Lock / reroll / recolour an element | Hover it (tap on mobile) → floating toolbar · `L` locks the hovered element |
 | Delete an element | Drag it onto the bin, or hover + `Delete` |
 | Lock / change a colour | Hover a swatch → lock / reroll · click the hex code to pick a colour |
-| Change the floor / toran | **Decorate** tab on the right edge (on mobile: the Decorate tab in the bottom sheet) → yellow Athangudi, coastal blue, red oxide or Kota stone · toggle the neem & marigold toran |
+| Change the floor / toran | **Decorate** tab on the right edge (on mobile: the Decorate tab in the bottom sheet) → Athangudi, Coastal, Red oxide or Kota stone · toggle the neem & marigold toran |
 | Add festive stickers | Decorate → drag a sweet, candle, cracker or decoration onto the floor (or tap it) |
 | Add a colour | **+** under the palette (5 to 7 colours) |
 | Edit a sticker | Hover it (tap on mobile) → smaller · bigger · rotate · flip · duplicate · delete · drag the corner dot to resize · drag to move or onto the bin |
@@ -55,7 +55,7 @@ About half of all designs include a figure.
 - solid ground bands under motifs, so the design reads as filled in
 - motifs seen from above: layered lotus, marigolds, clay diyas with lit flames, peacock feathers, paisleys, pookalam segments and spirals, flower vines and loose petals
 
-**The setting** is part of each design: the floor it's drawn on (simple Athangudi tiles in yellow or coastal blue, polished red oxide or Kota stone), a toran of neem sprigs and marigold strings hung across the top, and any stickers you place. Pressing space changes only the rangoli; the setting stays.
+**The setting** is part of each design: the floor it's drawn on (Athangudi tiles, Coastal blue-pottery tiles, polished red oxide or Kota stone), a toran of neem sprigs and marigold strings hung across the top, and any stickers you place. Pressing space changes only the rangoli; the setting stays.
 
 The gallery and the design you had open are saved in your browser's localStorage, so a reload brings you back to where you were.
 

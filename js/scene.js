@@ -75,8 +75,8 @@
     return { w: 240, h: 240, inner: s };
   }
   const FLOORS = {
-    athangudi: { name: 'Yellow Athangudi', noWash: true, tile: athangudi, scale: 0.62 },
-    coastal: { name: 'Coastal blue', noWash: true, tile: coastal, scale: 0.8 },
+    athangudi: { name: 'Athangudi', noWash: true, tile: athangudi, scale: 0.62 },
+    coastal: { name: 'Coastal', noWash: true, tile: coastal, scale: 0.8 },
     redoxide: { name: 'Red oxide', tile: redoxide, scale: 1 },
     kota: { name: 'Kota stone', tile: kota, scale: 1 },
   };

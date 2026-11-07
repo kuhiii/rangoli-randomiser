@@ -414,7 +414,7 @@ body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; 
 .decor-body { overflow-y: auto; padding: 4px 18px 18px; overscroll-behavior: contain; }
 .decor-sec h3 { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 8px; }
 .floors { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.floor-btn { display: flex; flex-direction: column; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-size: 12px; font-weight: 500; }
+.floor-btn { display: flex; flex-direction: column; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer; text-align: center; align-items: stretch; font-size: 12px; font-weight: 500; }
 .floor-sw { display: block; height: 52px; border: 1px solid var(--line); }
 .floor-btn.on .floor-sw { outline: 2px solid var(--ink); outline-offset: 2px; }
 .tgl { display: flex; align-items: center; gap: 10px; margin-top: 16px; font-size: 13px; cursor: pointer; }
