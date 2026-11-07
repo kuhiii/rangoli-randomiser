@@ -250,7 +250,7 @@
   // filter is painted once per render. Hover dimming and drag moves are then pure compositing
   // (opacity / transform) and never repaint the filter. #canvas on top only holds the hit areas.
   function paint(st) {
-    const P = RD.parts(st, { ui: true });
+    const P = RD.parts(st, { ui: true, badgeScale: mqMobile.matches ? 2 : 1 });
     stackEl.innerHTML = `<svg class="defs" aria-hidden="true">${P.defs}</svg>` +
       P.list.map((l) => `<svg class="ly" data-id="${l.id}" data-kind="${l.kind}" viewBox="-440 -440 880 880" aria-hidden="true"><g filter="url(#pw)">${l.art}</g></svg>`).join('');
     // hover areas: rings ordered thick → thin (thin on top), everything else keeps paint order above them
@@ -515,7 +515,7 @@
   document.addEventListener('click', (e) => {
     if (Date.now() < swallowUntil) { e.preventDefault(); e.stopPropagation(); }
   }, true);
-  mqMobile.addEventListener('change', () => { setPan(0, false); renderToran(true); renderScene(); });
+  mqMobile.addEventListener('change', () => { setPan(0, false); renderToran(true); renderScene(); paintedKey = ''; renderCanvas(); });
 
   // First visit on a phone: a little scroll unrolls under the header with how to play.
   const welcomeEl = $('#welcome');

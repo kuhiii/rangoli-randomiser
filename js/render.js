@@ -782,8 +782,9 @@
 
   /* --------------------------------------------------------------- badges */
   const LOCK_GLYPH = '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>';
+  let BADGE_K = 1; // lock badge size (phones draw the rangoli small, so they ask for a bigger one)
   const badge = (x, y) =>
-    `<g class="badge" transform="translate(${n(x)} ${n(y)})"><circle r="14" fill="#fffdf9" stroke="#1f1b16" stroke-opacity=".18"/><g transform="translate(-8.4 -8.6) scale(.7)" fill="none" stroke="#1f1b16" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${LOCK_GLYPH}</g></g>`;
+    `<g class="badge" transform="translate(${n(x)} ${n(y)})${BADGE_K !== 1 ? ` scale(${BADGE_K})` : ''}"><circle r="14" fill="#fffdf9" stroke="#1f1b16" stroke-opacity=".18"/><g transform="translate(-8.4 -8.6) scale(.7)" fill="none" stroke="#1f1b16" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${LOCK_GLYPH}</g></g>`;
 
   /* ----------------------------------------------------------- background */
   function stoneInner(thumb) {
@@ -801,6 +802,7 @@
   // Every element as its own piece: art, hit area and lock badge, in paint order (back → front)
   function parts(state, o = {}) {
     const ui = !!o.ui, lay = layout(state), list = [];
+    BADGE_K = o.badgeScale || 1;
     for (let i = state.rings.length - 1; i >= 0; i--) {
       const L = state.rings[i], b = lay.bands[L.id];
       let badge_ = '';
