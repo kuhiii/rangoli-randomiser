@@ -543,7 +543,7 @@ body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; 
   :root {
     --gen-h: 52px;
     --stage-h: calc(100dvh - var(--header) - var(--drawer) - var(--gen-h) - 40px);
-    --size: min(calc(100vw - 24px), calc(var(--stage-h) - var(--toran) - 8px));
+    --size: min(calc(100vw - 72px), calc(var(--stage-h) - var(--toran) - 40px));
     --stage-mid: calc(var(--header) + var(--toran) / 2 + var(--stage-h) / 2);
   }
   html, body { overflow: hidden; overflow: clip; } /* the scene pans; the page itself never scrolls sideways */
@@ -558,7 +558,7 @@ body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; 
   html.pan-ease .stage, html.pan-ease .toran, html.pan-ease .trash { transition: translate .38s cubic-bezier(.22, .8, .24, 1); }
   html.pan-ease body.on-floor { transition: background-position .38s cubic-bezier(.22, .8, .24, 1); }
   .palette {
-    position: absolute; z-index: 16; left: calc(100% - 18px); top: 50%; right: auto; width: 148px; height: auto;
+    position: absolute; z-index: 16; left: calc(100% - 18px); top: calc(50% - 48px); right: auto; width: 148px; height: auto;
     flex-direction: column; gap: 4px; transform: translateY(-50%); transition: none;
   }
   .palette .swatch:first-child { border-top-left-radius: 8px; }
@@ -568,16 +568,24 @@ body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; 
   .palette .sw-add { width: auto; height: 32px; }
 
   /* the bin peeks in from the left, like on desktop */
-  .trash { top: var(--stage-mid); width: 70px; height: 92px; transform: translate(-30px, -50%) rotate(14deg); }
+  /* low on the left, just above the Generate pill (its centre: pill top − 16px gap − half its height) */
+  .trash { top: calc(100dvh - env(safe-area-inset-bottom) - var(--drawer) - 24px - var(--gen-h) - 16px - 46px); width: 70px; height: 92px; transform: translate(-30px, -50%) rotate(14deg); }
   body.dragging .trash { transform: translate(14px, -50%) rotate(0deg); }
 
   /* Generate: a pill pinned 24px above the drawer (the open drawer slides over it) */
-  .gen-mobile {
+  .btn.primary.gen-mobile {
     position: fixed; z-index: 19; left: 50%; transform: translateX(-50%);
     bottom: calc(var(--drawer) + 24px + env(safe-area-inset-bottom));
-    width: auto; height: var(--gen-h); padding: 0 30px; border-radius: 999px; font-size: 15px;
+    width: auto; height: var(--gen-h); padding: 0 38px; border-radius: 999px; border: 0;
+    /* festive: saffron → marigold → kumkum powder, a dotted rice-flour border just inside the edge */
+    background: linear-gradient(100deg, #f7a325 0%, #ec6a1c 45%, #c8164f 100%);
+    color: #fff6e6; font: 600 18px/1 Fraunces, Georgia, serif; letter-spacing: .02em;
+    text-shadow: 0 1px 2px rgba(110, 20, 10, .35);
+    outline: 2px dotted rgba(255, 246, 230, .85); outline-offset: -6px;
+    box-shadow: 0 6px 22px rgba(200, 40, 40, .32), 0 2px 6px rgba(120, 40, 10, .2), inset 0 1px 0 rgba(255, 255, 255, .35);
   }
-  .gen-mobile:active { transform: translateX(-50%) scale(.97); }
+  .btn.primary.gen-mobile:hover { background: linear-gradient(100deg, #f7a325 0%, #ec6a1c 45%, #c8164f 100%); }
+  .btn.primary.gen-mobile:active { transform: translateX(-50%) scale(.97); }
 
   /* the sheet needs a real frosted fill on a phone, or the page shows straight through */
   .drawer:not(.moving) {

@@ -364,37 +364,72 @@
   }
   const defaultScene = () => ({ floor: 'athangudi', toran: true, stickers: [] });
 
-  // Per-element reroll: same motif, new variant (colours, count, details). Keeps id, place and lock.
-  const ctx = (st) => { PAL = st.palette.map((p) => p.hex); setColors(PAL.length); LOOK = st.look || 'outline'; };
+  // Per-element reroll: a real change that keeps the piece's role, place, size and lock. Usually a
+  // different shape from the same family (petal-like ↔ petal-like, line work ↔ line work, a ring of
+  // lotuses → a ring of diyas, a peacock pair → swans…), always with new colours and details.
+  const ctx = (st) => { PAL = st.palette.map((p) => p.hex); setColors(PAL.length); LOOK = st.look || 'outline'; LAYOUT = (st.form && st.form.layout) || 'mandala'; };
+  let LAYOUT = 'mandala';
+  const RING_FAMILY = [
+    ['petals', 'lotus2', 'leaves', 'drops', 'paisley', 'peacock', 'scallops', 'vine'],
+    ['dots', 'band', 'lines', 'segments', 'chain', 'kolam', 'spiral', 'diamonds', 'teeth', 'swirls'],
+    ['diyas', 'marigolds', 'motifs'],
+  ];
+  const familyOf = (type) => RING_FAMILY.find((f) => f.includes(type)) || RING_FAMILY[0];
+  const pickOther = (pool, cur) => { const w = { ...pool }; delete w[cur]; return Object.keys(w).length ? U.weighted(w) : cur; };
   function rerollRing(L, mood, st) {
     if (st) ctx(st);
+    mood = mood || 'festive';
+    if (L.type === 'motifs' && U.chance(0.75)) {
+      // same kind of ring, a different motif
+      const m = pickOther(POOL.ring, L.m);
+      const [c1, c2] = colors();
+      return { ...L, m, cm: natMap(m, 0.3), c1, c2, density: U.rand(0.85, 1.2), half: U.chance(0.5), v: U.randInt(0, 99) };
+    }
+    if (U.chance(0.75)) {
+      // a different shape from the same family, in the same slot (same thickness, so nothing else moves)
+      const fresh = newRing(mood, [L.type], familyOf(L.type).filter((t) => t !== L.type), null);
+      return { ...fresh, id: L.id, weight: L.weight, locked: L.locked };
+    }
+    // same shape, clearly different: count, offset, ground and colours
     const [c1, c2] = colors();
-    const g = L.ground >= 0 || U.chance(0.3) ? groundFor(c1, c2) : -1;
-    return { ...L, c1, c2, ground: NO_GROUND.includes(L.type) ? -1 : g, density: U.rand(0.85, 1.2), half: !L.half, v: U.randInt(0, 99),
-      flip: U.chance(0.5), cm: L.m ? natMap(L.m, 0.5) : undefined };
+    const g = L.ground >= 0 ? (U.chance(0.4) ? -1 : groundFor(c1, c2)) : U.chance(0.6) ? groundFor(c1, c2) : -1;
+    return { ...L, c1, c2, ground: NO_GROUND.includes(L.type) ? -1 : g, density: L.density > 1.02 ? U.rand(0.7, 0.92) : U.rand(1.1, 1.35),
+      half: !L.half, v: U.randInt(0, 99), flip: !L.flip, cm: L.m ? natMap(L.m, 0.5) : undefined };
   }
   function rerollCenter(C, mood, st) {
     if (st) ctx(st);
     const [c1, c2] = colors();
-    if (C.type === 'plain') return { ...C, c1 };
-    return { ...C, c1, c2, k: U.pick([6, 8, 8, 10, 12]), half: !C.half, v: U.randInt(0, 99) };
+    if (C.type === 'plain') return { ...C, c1 }; // the disc a figure sits on: just a new colour
+    if (U.chance(0.7)) {
+      let c;
+      do c = newCenter(mood || 'festive'); while (c.type === C.type);
+      return { ...c, id: C.id, weight: C.weight, locked: C.locked };
+    }
+    return { ...C, c1, c2, k: U.pick([6, 8, 10, 12].filter((k) => k !== C.k)), half: !C.half, v: U.randInt(0, 99) };
   }
   function rerollAccent(A, mood, st) {
     if (st) ctx(st);
-    const [c1, c2] = colors();
-    return { ...A, c1, c2, inward: !A.inward, size: U.rand(84, 112), v: U.randInt(0, 99) };
+    let a;
+    do a = newAccent(mood || 'festive', { mode: 'radial' }); while (a.type === A.type && U.chance(0.85));
+    return { ...a, id: A.id, pos: A.pos, locked: A.locked };
   }
   function rerollFigure(F, st) {
     ctx(st);
+    const pool = F.role === 'pair' ? POOL.pair : F.role === 'obj' ? POOL.obj : F.role === 'corner' ? POOL.corner : F.role === 'minor' ? POOL.minor
+      : LAYOUT === 'centre' ? POOL.centre : LAYOUT === 'square' ? POOL.square : POOL.main;
+    const m = U.chance(0.8) ? pickOther(pool, F.m) : F.m;
     const flip = U.chance(0.5) ? -1 : 1;
-    // a mirrored pair stays mirrored; a single figure may turn round
-    const pos = F.pos.length === 2 || !FLIPS.includes(F.m) ? F.pos : F.pos.map((p) => ({ ...p, f: F.role === 'corner' ? p.f : p.f * flip }));
-    return { ...F, c: natMap(F.m, 0.6), v: U.randInt(0, 99), pos };
+    let pos;
+    if (F.pos.length === 2) pos = F.pos; // a mirrored pair stays mirrored (all pair birds and fish face left as drawn)
+    else if (!FLIPS.includes(m)) pos = F.pos.map((p) => ({ ...p, f: 1 }));
+    else pos = F.pos.map((p) => ({ ...p, f: F.role === 'corner' ? p.f || 1 : flip }));
+    return { ...F, m, pos, c: natMap(m, 0.5), v: U.randInt(0, 99) };
   }
   function rerollStrand(S, st) {
     ctx(st);
-    const a = S.pts[0], b = S.pts[3], fresh = strand(S.kind, a, b, U.rand(50, 160) * (U.chance(0.5) ? 1 : -1), S.role);
-    return { ...fresh, id: S.id, locked: S.locked, end: S.end || fresh.end, c: natMap(S.end || 'leaves', 0.6) };
+    const kind = S.role === 'main' || !U.chance(0.4) ? S.kind : pickOther({ vine: 1, swirl: 1, dots: 1 }, S.kind);
+    const a = S.pts[0], b = S.pts[3], fresh = strand(kind, a, b, U.rand(60, 170) * (U.chance(0.5) ? 1 : -1), S.role);
+    return { ...fresh, id: S.id, locked: S.locked };
   }
   function recolor(el) {
     let c;

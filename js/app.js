@@ -187,6 +187,7 @@
   });
   function generate() {
     if (fullDlg.open) return;
+    if (mqMobile.matches && panX !== 0) setPan(0, true); // the view glides back so the new design is centred
     if (gallery.length >= ST.MAX && !skipFull) { confirmFull().then((ok) => ok && doGenerate()); return; }
     doGenerate();
   }
@@ -504,7 +505,7 @@
   document.addEventListener('click', (e) => {
     if (Date.now() < swallowUntil) { e.preventDefault(); e.stopPropagation(); }
   }, true);
-  mqMobile.addEventListener('change', () => { setPan(0, false); renderToran(true); });
+  mqMobile.addEventListener('change', () => { setPan(0, false); renderToran(true); renderScene(); });
 
   svgEl.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
@@ -930,7 +931,7 @@
   let sceneKey = '';
   function renderScene() {
     const sc = state.scene;
-    const key = sc.floor + '|' + sc.toran;
+    const key = sc.floor + '|' + sc.toran + '|' + mqMobile.matches;
     if (key !== sceneKey) {
       sceneKey = key;
       const t = SC.floorTile(sc.floor);
@@ -938,7 +939,9 @@
       document.body.style.backgroundImage = t
         ? `radial-gradient(120% 85% at 50% 30%, rgba(255,255,255,.14), rgba(255,255,255,0) 60%), radial-gradient(140% 110% at 50% 50%, rgba(20,8,4,0) 50%, rgba(20,8,4,.14)), url("${t.url}")`
         : '';
-      document.body.style.backgroundSize = t ? `auto, auto, ${t.w}px ${t.h}px` : '';
+      // phones get smaller tiles, so the floor reads as tiles rather than a few giant squares
+      const tk = mqMobile.matches ? 0.58 : 1;
+      document.body.style.backgroundSize = t ? `auto, auto, ${(t.w * tk).toFixed(1)}px ${(t.h * tk).toFixed(1)}px` : '';
       document.documentElement.classList.toggle('toran-on', sc.toran);
       renderToran();
       setK();
