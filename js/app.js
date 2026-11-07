@@ -1207,29 +1207,58 @@
     '</div></div>').join('');
 
   // Drag a sticker out of the panel onto the floor (or tap it to drop it somewhere free).
-  let pdrag = null;
+  // On touch the list must scroll freely: a tap adds the sticker, a swipe only ever scrolls (and a tap
+  // just after a scroll is ignored), and a long press picks the sticker up to drag it onto the floor.
+  let pdrag = null, lastListScroll = 0;
+  document.addEventListener('scroll', (e) => {
+    if (e.target && e.target.closest && e.target.closest('.drawer, .decor')) lastListScroll = Date.now();
+  }, true);
+  const liftFloat = () => {
+    pdrag.started = true;
+    const f = document.createElement('img');
+    f.className = 'stk-float';
+    f.src = SC.stickerURL(pdrag.t);
+    const B = SC.stickerBox(pdrag.t);
+    f.style.width = (STK_SIZE * unitK * B.aw).toFixed(0) + 'px';
+    f.style.height = (STK_SIZE * unitK * B.ah).toFixed(0) + 'px';
+    document.body.appendChild(f);
+    pdrag.f = f;
+    decorEl.classList.add('peek'); // slide the panel aside so the whole floor is free
+    if (mqMobile.matches) setOpen(false);
+  };
   $('#stkCats').addEventListener('pointerdown', (e) => {
     const b = e.target.closest('.stk-tile');
     if (!b || e.button !== 0) return;
-    e.preventDefault();
-    pdrag = { t: b.dataset.t, sx: e.clientX, sy: e.clientY, started: false };
-    try { b.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    const touch = e.pointerType !== 'mouse';
+    pdrag = { t: b.dataset.t, sx: e.clientX, sy: e.clientY, started: false, touch, armed: !touch, tile: b, id: e.pointerId };
+    if (!touch) {
+      e.preventDefault();
+      try { b.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      return;
+    }
+    // touch: the list keeps scrolling natively until a long press picks the sticker up
+    const d = pdrag;
+    d.pressT = setTimeout(() => {
+      if (pdrag !== d) return;
+      d.armed = true;
+      b.classList.add('lifting');
+      try { b.setPointerCapture(d.id); } catch (err) { /* ignore */ }
+      if (navigator.vibrate) navigator.vibrate(12);
+    }, 320);
   });
+  // once a sticker is picked up, the list stops scrolling under the finger
+  $('#stkCats').addEventListener('touchmove', (e) => { if (pdrag && pdrag.touch && pdrag.armed) e.preventDefault(); }, { passive: false });
   $('#stkCats').addEventListener('pointermove', (e) => {
     if (!pdrag) return;
+    const moved = Math.hypot(e.clientX - pdrag.sx, e.clientY - pdrag.sy);
+    if (!pdrag.armed) {
+      // moved before the long press: it's a scroll, not a pick-up
+      if (moved > 8) { clearTimeout(pdrag.pressT); pdrag = null; }
+      return;
+    }
     if (!pdrag.started) {
-      if (Math.hypot(e.clientX - pdrag.sx, e.clientY - pdrag.sy) < 6) return;
-      pdrag.started = true;
-      const f = document.createElement('img');
-      f.className = 'stk-float';
-      f.src = SC.stickerURL(pdrag.t);
-      const B = SC.stickerBox(pdrag.t);
-      f.style.width = (STK_SIZE * unitK * B.aw).toFixed(0) + 'px';
-      f.style.height = (STK_SIZE * unitK * B.ah).toFixed(0) + 'px';
-      document.body.appendChild(f);
-      pdrag.f = f;
-      decorEl.classList.add('peek'); // slide the panel aside so the whole floor is free
-      if (mqMobile.matches) setOpen(false);
+      if (moved < 6) return;
+      liftFloat();
     }
     pdrag.f.style.translate = `${e.clientX}px ${e.clientY}px`;
   });
@@ -1237,10 +1266,14 @@
     if (!pdrag) return;
     const d = pdrag;
     pdrag = null;
+    clearTimeout(d.pressT);
+    if (d.tile) d.tile.classList.remove('lifting');
     decorEl.classList.remove('peek');
     if (d.f) d.f.remove();
     if (cancelled) return;
     if (!d.started) {
+      if (d.touch && d.armed) return; // a long press let go without dragging: adding is a tap
+      if (d.touch && Date.now() - lastListScroll < 300) return; // a touch that stopped a scroll
       if (mqMobile.matches) setOpen(false);
       const p = freeSpot();
       return addSticker(d.t, p.x, p.y);

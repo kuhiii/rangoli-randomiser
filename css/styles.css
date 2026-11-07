@@ -23,6 +23,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 button { font: inherit; color: inherit; }
+/* no blue tap flash on phones; focus rings only for keyboard use */
+* { -webkit-tap-highlight-color: transparent; }
+button:focus:not(:focus-visible) { outline: none; }
 svg { display: block; }
 
 /* ------------------------------------------------------------------ header */
@@ -427,6 +430,7 @@ body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; 
   cursor: grab; font-size: 10.5px; color: var(--ink); touch-action: none; transition: background .15s, transform .2s cubic-bezier(.2, .8, .2, 1);
 }
 .stk-tile:hover { background: rgba(255, 255, 255, .8); transform: translateY(-2px); }
+.stk-tile.lifting { transform: scale(1.06); background: rgba(255, 255, 255, .9); transition: transform .15s ease-out; }
 .stk-tile img { width: 100%; aspect-ratio: 1; object-fit: contain; pointer-events: none; }
 .decor-tip { font-size: 11.5px; color: var(--muted); margin: 16px 0 0; }
 
@@ -536,8 +540,14 @@ body { background-color: #fff; background-repeat: no-repeat, no-repeat, repeat; 
 .confirm h2 { margin: 0 0 4px; font: 400 19px 'DM Serif Display', Georgia, serif; }
 .confirm p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
 .cf-check { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 16px 0 0; font-size: 13px; color: var(--muted); cursor: pointer; }
-.cf-actions { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
-.cf-actions .btn { border-radius: 10px; }
+.cf-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; margin-top: 18px; }
+/* explicit sizes so the phone rule for icon buttons never squeezes them */
+.confirm .cf-actions .btn {
+  width: auto; height: 44px; padding: 0 14px; justify-content: center; border-radius: 12px;
+  font: 600 14px Raleway, system-ui, sans-serif; box-shadow: none;
+}
+.confirm .cf-actions .btn:not(.primary) { background: rgba(31, 27, 22, .06); border: 1px solid rgba(31, 27, 22, .08); color: var(--ink); }
+.confirm .cf-actions .btn:not(.primary):hover { background: rgba(31, 27, 22, .1); }
 
 /* ------------------------------------------------ phone layout (final overrides) */
 @media (max-width: 760px) {
