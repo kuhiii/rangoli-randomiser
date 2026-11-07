@@ -517,6 +517,28 @@
   }, true);
   mqMobile.addEventListener('change', () => { setPan(0, false); renderToran(true); renderScene(); });
 
+  // First visit on a phone: a little scroll unrolls under the header with how to play.
+  const welcomeEl = $('#welcome');
+  function showWelcome() {
+    if (!mqMobile.matches) return;
+    let seen = false;
+    try { seen = localStorage.getItem('rangoli.welcomed') === '1'; if (!seen) localStorage.setItem('rangoli.welcomed', '1'); } catch (e) { /* storage unavailable */ }
+    if (seen) return;
+    let closed = false;
+    const close = () => {
+      if (closed) return;
+      closed = true;
+      welcomeEl.classList.remove('open'); // rolls back up
+      setTimeout(() => welcomeEl.classList.add('gone'), 450);
+      setTimeout(() => { welcomeEl.hidden = true; }, 800);
+    };
+    welcomeEl.hidden = false;
+    setTimeout(() => welcomeEl.classList.add('open'), 60);
+    welcomeEl.addEventListener('click', close);
+    setTimeout(close, 6000);
+  }
+  setTimeout(showWelcome, 700);
+
   svgEl.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
     const g = e.target.closest('.layer');
